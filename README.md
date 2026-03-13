@@ -43,7 +43,8 @@ Both methods accept:
 
 - `doctype`: target DocType on the live site
 - `rows`: JSON array of row objects
-- `key_field`: field used to detect existing records (default: `name`)
+- `key_field`: field used to detect existing records (optional)
+- `lookup_fields`: optional list of fields used to match existing rows when `key_field` is not suitable
 - `update_existing`: `1/0`
 
 Optional extra safety:
