@@ -70,6 +70,43 @@ def existing_map(doctype: str, key_field: str, keys: list[str], chunk_size: int 
 	return out
 
 
+def existing_lookup_map(
+	doctype: str,
+	lookup_fields: list[str],
+	rows: list[dict[str, Any]],
+	chunk_size: int = DEFAULT_EXISTING_CHUNK,
+) -> dict[str, str]:
+	out: dict[str, str] = {}
+	if not lookup_fields or not rows:
+		return out
+
+	anchor_field = lookup_fields[0]
+	anchor_values = sorted(
+		{
+			cstr(row.get(anchor_field) or "").strip()
+			for row in rows
+			if all(row.get(field) not in (None, "") for field in lookup_fields)
+		}
+	)
+	if not anchor_values:
+		return out
+
+	fields = ["name", *lookup_fields]
+	for start in range(0, len(anchor_values), chunk_size):
+		chunk = anchor_values[start : start + chunk_size]
+		existing_rows = frappe.get_all(
+			doctype,
+			filters=[[doctype, anchor_field, "in", chunk]],
+			fields=fields,
+			limit_page_length=0,
+		)
+		for row in existing_rows:
+			signature = lookup_signature(row, lookup_fields)
+			if signature:
+				out[signature] = cstr(row.get("name") or "").strip()
+	return out
+
+
 def normalize_payload(row: dict[str, Any], allowed: set[str]) -> dict[str, Any]:
 	return {k: v for k, v in row.items() if k in allowed and v not in (None, "")}
 
@@ -131,7 +168,7 @@ def bulk_upsert_impl(
 			keys.append(key_value)
 
 	existing = existing_map(doctype, key_field, keys) if key_field else {}
-	lookup_cache: dict[str, str] = {}
+	lookup_cache = existing_lookup_map(doctype, lookup_fields, cleaned_rows) if lookup_fields else {}
 
 	stats = {
 		"doctype": doctype,
