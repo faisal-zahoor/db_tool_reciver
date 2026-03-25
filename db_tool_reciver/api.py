@@ -11,6 +11,11 @@ from db_tool_reciver.bulk_upsert import (
 	coerce_lookup_fields,
 	coerce_rows,
 )
+from db_tool_reciver.medical_cleanup import (
+	cleanup_patient_encounter_history_impl,
+	coerce_names,
+	get_imported_patient_encounter_names,
+)
 
 
 @frappe.whitelist(methods=["POST"])
@@ -72,3 +77,31 @@ def enqueue_bulk_upsert(
         "doctype": doctype,
         "count": len(parsed_rows),
     }
+
+
+@frappe.whitelist(methods=["POST"])
+def cleanup_patient_encounter_history(
+	encounter_names: list[str] | str,
+	dry_run: int = 0,
+	clear_encounter_fields: int = 1,
+):
+	return cleanup_patient_encounter_history_impl(
+		encounter_names=coerce_names(encounter_names),
+		dry_run=dry_run,
+		clear_encounter_fields=clear_encounter_fields,
+	)
+
+
+@frappe.whitelist(methods=["POST"])
+def cleanup_imported_patient_encounter_history(
+	patient: str | None = None,
+	limit: int = 0,
+	dry_run: int = 0,
+	clear_encounter_fields: int = 1,
+):
+	encounter_names = get_imported_patient_encounter_names(limit=limit, patient=patient)
+	return cleanup_patient_encounter_history_impl(
+		encounter_names=encounter_names,
+		dry_run=dry_run,
+		clear_encounter_fields=clear_encounter_fields,
+	)
